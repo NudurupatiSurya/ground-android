@@ -21,10 +21,9 @@ import androidx.lifecycle.viewModelScope
 import com.google.android.ground.model.User
 import com.google.android.ground.persistence.local.LocalValueStore
 import com.google.android.ground.persistence.local.room.converter.SubmissionDeltasConverter
-import com.google.android.ground.repository.OfflineAreaRepository
 import com.google.android.ground.repository.SubmissionRepository
 import com.google.android.ground.repository.SurveyRepository
-import com.google.android.ground.system.auth.AuthenticationManager
+import com.google.android.ground.repository.UserRepository
 import com.google.android.ground.ui.common.AbstractViewModel
 import com.google.android.ground.ui.common.Navigator
 import com.google.android.ground.ui.common.SharedViewModel
@@ -32,7 +31,6 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -42,21 +40,18 @@ class HomeScreenViewModel
 internal constructor(
   private val localValueStore: LocalValueStore,
   private val navigator: Navigator,
-  private val offlineAreaRepository: OfflineAreaRepository,
   private val submissionRepository: SubmissionRepository,
   private val surveyRepository: SurveyRepository,
-  private val authenticationManager: AuthenticationManager,
+  private var userRepository: UserRepository
 ) : AbstractViewModel() {
 
   private val _openDrawerRequests: MutableSharedFlow<Unit> = MutableSharedFlow()
   val openDrawerRequestsFlow: SharedFlow<Unit> = _openDrawerRequests.asSharedFlow()
 
-  private val _userDetails = MutableLiveData<User>()
-  val userDetails: LiveData<User> = _userDetails
-
-  init {
-    viewModelScope.launch { _userDetails.value = authenticationManager.getAuthenticatedUser() }
-  }
+  private val _userData = MutableLiveData<User>()
+  private val _userId = MutableLiveData<String>()
+  val userData: LiveData<User> = _userData
+  val userId: LiveData<String> = _userId
 
   // TODO(#1730): Allow tile source configuration from a non-survey accessible source.
   val showOfflineAreaMenuItem: LiveData<Boolean> = MutableLiveData(true)
@@ -100,15 +95,8 @@ internal constructor(
     )
   }
 
-  private suspend fun getOfflineAreas() = offlineAreaRepository.offlineAreas().first()
-
   fun showOfflineAreas() {
-    viewModelScope.launch {
-      navigator.navigate(
-        if (getOfflineAreas().isEmpty()) HomeScreenFragmentDirections.showOfflineAreaSelector()
-        else HomeScreenFragmentDirections.showOfflineAreas()
-      )
-    }
+    navigator.navigate(HomeScreenFragmentDirections.showOfflineAreas())
   }
 
   fun showSettings() {
@@ -117,5 +105,13 @@ internal constructor(
 
   fun showSyncStatus() {
     navigator.navigate(HomeScreenFragmentDirections.showSyncStatus())
+  }
+
+  fun getUserData(): User? {
+    viewModelScope.launch {
+      _userId.value = userRepository.getUserId()
+      _userData.value = userId.value?.let { userRepository.getUser(it) }
+    }
+    return userData.value
   }
 }
