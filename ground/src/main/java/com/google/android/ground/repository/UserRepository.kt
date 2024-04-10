@@ -71,8 +71,6 @@ constructor(
 
   suspend fun getUser(userId: String): User = localUserStore.getUser(userId)
 
-  suspend fun getUserDetails(): User = localUserStore.getUserDetails()
-
   /** Clears all user-specific preferences and settings. */
   fun clearUserPreferences() = localValueStore.clear()
 
