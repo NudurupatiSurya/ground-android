@@ -22,8 +22,8 @@ import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.core.view.GravityCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.drawerlayout.widget.DrawerLayout
@@ -104,6 +104,7 @@ class HomeScreenFragment :
       homeScreenViewModel.showSurveySelector()
     }
     navHeader.findViewById<ShapeableImageView>(R.id.user_image).setOnClickListener {
+      homeScreenViewModel.reInitializeDialogFlags()
       showSignOutConfirmationDialog()
     }
     updateNavHeader()
@@ -166,20 +167,17 @@ class HomeScreenFragment :
     // compose.
     binding.composeView.apply {
       setContent {
-        val openUnsyncedDialog = remember { mutableStateOf(true) }
-        val openSignOutDialog = remember { mutableStateOf(false) }
-
-        // Reset the state for recomposition
-        openUnsyncedDialog.value = false
-        openSignOutDialog.value = true
-
-        SignOutConfirmationDialog(
-          requireContext(),
-          openUnsyncedDialog,
-          openSignOutDialog,
-          homeScreenViewModel,
-        ) {
-          userRepository.signOut()
+        val showUserDetailsDialog by homeScreenViewModel.showUserDetailsDialog.observeAsState(true)
+        val showSignOutDialog by homeScreenViewModel.showSignOutDialog.observeAsState(false)
+        if (showUserDetailsDialog) {
+          UserDetailsDialog(context = requireContext(), homeScreenViewModel = homeScreenViewModel)
+        } else if (showSignOutDialog) {
+          SignOutConfirmationDialog(
+            context = requireContext(),
+            homeScreenViewModel = homeScreenViewModel,
+          ) {
+            userRepository.signOut()
+          }
         }
       }
     }
